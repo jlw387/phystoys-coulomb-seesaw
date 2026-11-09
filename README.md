@@ -216,11 +216,36 @@ denominator floor of $10^{-8}(q_1+q_2)/L$ for potential and
 $10^{-8}(q_1+q_2)/L^2$ for field. A separate unweighted-potential error is reported in units
 of $(q_1+q_2)/L$. Numerical tests support the analytic derivation; they are not its proof.
 
+### 6. Charges living on the 3-sphere: the weight is the conformal factor
+
+Treat the lifted points as the "real" charges, living on $S^3$ in 4D, with stereographic projection
+placing their images in the physical world. Then:
+
+- **Sphere physics.** On the unit $S^3$, $F = 1/c_1 - 1/c_2$ satisfies $\Delta_{S^3}F = \tfrac34F$
+  away from the poles, which was checked numerically. That is the **conformal Laplacian**
+  $-\Delta + \tfrac{n-2}{4(n-1)}\mathcal R = -\Delta + \tfrac34$, and $1/c$ is its point-charge
+  Green's function.
+  - The compact sphere has no zero mode, so the operator has no net-charge constraint.
+- **The weight is the conformal factor.** The sphere metric is $\varphi^{4/(n-2)}$ times the flat metric. For
+  $n=3$ this gives $\varphi \propto (1+|u|^2)^{-1/2} = w$. The conformal Laplacian's transformation law
+  then turns a sphere solution $F$ into the flat harmonic function $wF$.
+  - In general the factor is $w^{\,n-2}$, which is exactly 1 in 2D. This is why 2D needs no weight.
+- **Heights set the charge ratio.** Both lifted charges have *equal* strength on the sphere and sit at
+  heights $\pm h$, with $h=\sin\alpha$ and $\alpha$ the tilt of the axis joining them. Projection
+  rescales each charge's strength by the weight at its location, giving
+  $q_1/q_2=\sqrt{(1+h)/(1-h)}=\tan(45^\circ+\alpha/2)$. The charge closer to the projection pole
+  becomes the larger physical charge.
+- **Field lines still do not transfer.** On the sphere, the field lines of $F$ *are* the longitudes
+  between the two poles. The physical field is $-\nabla(wF)$, though, and the $F\nabla w$ term bends
+  the lines. So projected longitudes are circles, while real field lines are not.
+  - The mismatch also shows up as flux. Every projected longitude joins the two charges except the
+    one through the projection pole, yet for $q_1\ne q_2$ the excess flux has to escape to infinity.
+
 ## Open questions / next steps
 
 - **Implemented:** unequal-pair visualization, weighted potential/gradient, and the fulcrum $O$.
-- Is there a natural geometric meaning for the weight $c_\infty$, for example a conformal factor or
-  a quaternion norm?
+- **Answered (§6):** the weight $c_\infty$ is the conformal factor of the conformal Laplacian on $S^3$.
+- **Saved construction:** git tag `v1-weighted-construction` preserves the two-view app as first built.
 - Can the field *lines*, not just the potential, be given a clean 3-sphere description?
   - The weighted-gradient construction above now supplies an exact computational description;
     a simpler geometric family of curves is still an open question.
