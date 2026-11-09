@@ -305,6 +305,43 @@ project onto circles through both charges and none escape. Separately checked: a
 ellipsoid can't fix the shape (vertical stretch has no effect; best in-plane stretch leaves 25% of
 the sphere's error) or the counting.
 
+## Related work
+
+The mathematics is classical; the S³ "seesaw" picture appears to be a new presentation of it.
+A literature search (Nov 2026) found no prior source that lifts an unequal pair to *antipodal* points of
+a hypersphere or treats the projection point as the sink for the net charge. Search tooling was
+limited, so read this as "not found" rather than "proven absent".
+
+**Closest match: Maxwell / Kelvin's zero-potential sphere.**
+- In Maxwell's *Treatise*, Vol. 1, Ch. XI, Art. 156 ([Wikisource](https://en.wikisource.org/wiki/A_Treatise_on_Electricity_and_Magnetism/Part_I/Chapter_XI)),
+  credited to W. Thomson (Kelvin), *Camb. & Dublin Math. J.* (1848), opposite charges $e_1, e_2$ have a
+  zero-potential sphere centered at C on AB *produced*, with $AC:BC = e_1^2:e_2^2$ and radius
+  $AB\,e_1e_2/|e_1^2-e_2^2|$.
+- Our fulcrum divides AB in the same ratio $q_1^2:q_2^2$, but *internally*, with radius
+  $L\,q_1q_2/(q_1^2+q_2^2)$. The two centers are harmonic conjugates.
+- Maxwell's sphere is the projection of the $S^3$ "equator" between the antipodal poles, where
+  $F = 0$, so it is the $V=0$ surface. Checked numerically to $10^{-15}$.
+
+**Classical ingredients:**
+- **Inversion, Kelvin transform, and images:** W. Thomson (1845–48) and Liouville (1847); Maxwell, *Treatise* Ch. XI, Arts. 155–174.
+  A modern pedagogical treatment: Amaral, Ventura & Lemos, "Kelvin transformation and inverse
+  multipoles in electrostatics," *Eur. J. Phys.* 38, 015202 (2017), [arXiv:1611.05942](https://arxiv.org/abs/1611.05942).
+- **Bispherical coordinates and R-separation:** the weight is the R-separation prefactor $\sqrt{\cosh\tau-\cos\sigma}$.
+  - Morse & Feshbach, *Methods of Theoretical Physics* (1953), pp. 665–666, 1298–1301.
+  - Moon & Spencer, *Field Theory Handbook* (1988), pp. 110–112.
+  - G. B. Jeffery, *Proc. R. Soc. A* 87, 109 (1912), [doi:10.1098/rspa.1912.0011](https://doi.org/10.1098/rspa.1912.0011) (two-sphere problems).
+- **Conformal symmetry of Laplace's equation:**
+  - M. Bôcher, *Ueber die Reihenentwickelungen der Potentialtheorie* (Teubner, 1894), introducing pentaspherical coordinates.
+  - W. Miller Jr., *Symmetry and Separation of Variables* (Addison-Wesley, 1977).
+- **Conformal Laplacian and stereographic projection:** J. M. Lee & T. H. Parker, "The Yamabe problem,"
+  *Bull. AMS* 17, 37 (1987).
+- **Same geometry, quantum setting:** V. Fock, *Z. Phys.* 98, 145 (1935). Fock stereographically projects
+  hydrogen's momentum space onto $S^3$ with a weight factor, revealing its SO(4) symmetry. See also
+  Meremianin & Rost, *J. Phys. A* 39, 12427 (2006), [arXiv:math-ph/0606062](https://arxiv.org/abs/math-ph/0606062).
+
+The search opened and confirmed Maxwell Ch. XI, Amaral et al., Meremianin & Rost, and the
+bispherical-coordinate references. The others were checked only through standard secondary citations.
+
 ## Open questions / next steps
 
 - **Implemented:** unequal-pair visualization, weighted potential/gradient, and the fulcrum $O$.
