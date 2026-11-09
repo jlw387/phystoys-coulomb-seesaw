@@ -52,6 +52,9 @@ npm run build
 npm run preview
 ```
 
+Pushes to `main` deploy to GitHub Pages via `.github/workflows/deploy.yml` (set the repository's
+**Settings → Pages → Source** to **GitHub Actions**).
+
 The two views fill the window. Everything else lives in two drawers opened from the top bar
 (the charge summary chip also opens **Settings**); `Esc` closes them.
 
