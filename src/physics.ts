@@ -90,10 +90,14 @@ export function chargeRadius(q: number, separation: number): number {
 }
 
 export type FieldModel = "weighted" | "coulomb";
-export interface Trace { points: Vec3[]; end: "charge" | "boundary" | "limit" | "null" }
+export interface Trace { points: Vec3[]; end: "charge" | "escape" | "limit" | "null" }
+
+// Escaping lines are followed this many separations out, far enough that their lift lies next to N.
+export const ESCAPE_RADIUS = 200;
 
 export function traceField(seed: Vec3, direction: 1 | -1, g: Geometry, model: FieldModel): Trace {
-  const step = g.separation * 0.013;
+  const base = g.separation * 0.013;
+  let step = base;
   const points: Vec3[] = [seed];
   const field = model === "weighted" ? projected : coulomb;
   const tangent = (p: Vec3): Vec3 | undefined => {
@@ -103,11 +107,14 @@ export function traceField(seed: Vec3, direction: 1 | -1, g: Geometry, model: Fi
       e.map(v => direction * v / n) as Vec3;
   };
   const shift = (p: Vec3, v: Vec3, factor: number) => p.map((x, i) => x + step * factor * v[i]) as Vec3;
-  for (let i = 0; i < 1800; i++) {
+  for (let i = 0; i < 6000; i++) {
     const p = points[points.length - 1];
     if (i > 0 && (distance(p, g.plus) < chargeRadius(g.positive, g.separation) ||
       distance(p, g.minus) < chargeRadius(g.negative, g.separation))) return { points, end: "charge" };
-    if (norm(p) > 4 * g.separation) return { points, end: "boundary" };
+    const r = norm(p);
+    if (r > ESCAPE_RADIUS * g.separation) return { points, end: "escape" };
+    // Steps grow with distance so far-out loops and escapes stay cheap.
+    step = base * Math.max(1, r / (2 * g.separation));
     const k1 = tangent(p);
     if (!k1) return { points, end: "null" };
     const k2 = tangent(shift(p, k1, 0.5));
@@ -121,23 +128,30 @@ export function traceField(seed: Vec3, direction: 1 | -1, g: Geometry, model: Fi
   return { points, end: "limit" };
 }
 
+/**
+ * Equal-flux lines seeded only from the stronger charge (positive when equal). Every line of the
+ * weaker charge connects to the stronger one, so its share of lines is automatically
+ * |q_weak| / |q_strong|, and the remaining fraction 1 - |q_weak| / |q_strong| escapes to infinity.
+ */
 export function fieldLines(g: Geometry, count: number, model: FieldModel): Trace[] {
+  const fromPositive = g.positive >= g.negative;
+  const q = fromPositive ? g.positive : g.negative;
+  const center = fromPositive ? g.plus : g.minus;
+  const r = chargeRadius(q, g.separation) * 1.015;
   const traces: Trace[] = [];
-  for (const sign of [1, -1] as const) {
-    const q = sign === 1 ? g.positive : g.negative;
-    const center = sign === 1 ? g.plus : g.minus;
-    for (let i = 0; i < count; i++) {
-      // Uniform solid-angle seeds in each half-plane; mirror for the other half.
-      const theta = Math.acos(1 - 2 * (i + 0.5) / count);
-      for (const side of [-1, 1]) {
-        const r = chargeRadius(q, g.separation) * 1.015;
-        const trace = traceField([center[0] + r * Math.cos(theta), side * r * Math.sin(theta), 0],
-          sign, g, model);
-        if (sign === 1 || trace.end === "boundary") traces.push(trace);
-      }
+  for (let i = 0; i < count; i++) {
+    // Uniform in cos(theta): each line in a half-plane carries the same axisymmetric 3D flux.
+    const theta = Math.acos(1 - 2 * (i + 0.5) / count);
+    for (const side of [-1, 1]) {
+      traces.push(traceField([center[0] + r * Math.cos(theta), side * r * Math.sin(theta), 0],
+        fromPositive ? 1 : -1, g, model));
     }
   }
   return traces;
+}
+
+export function escapeFraction(g: Geometry): number {
+  return 1 - Math.min(g.positive, g.negative) / Math.max(g.positive, g.negative);
 }
 
 export function verification(g: Geometry) {

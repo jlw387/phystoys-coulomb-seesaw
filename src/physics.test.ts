@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius } from "./physics";
+import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius, escapeFraction } from "./physics";
 
 test("seesaw, full 3D potential, and analytic weighted gradient across the UI range", () => {
   for (const positive of [0.25, 1, 2, 4]) {
@@ -54,21 +54,25 @@ test("RK4 weighted field lines preserve the Coulomb flux invariant", () => {
   }
 });
 
-test("rendered trajectories terminate at a charge or plotting boundary and agree for both models", () => {
-  for (const [positive, negative] of [[1, 1], [4, 0.25], [0.25, 4], [2, 1], [1, 3]]) {
+test("rendered trajectories agree for both models and the escaping share is 1 - q_weak/q_strong", () => {
+  const count = 8;
+  // Ratios chosen so no seed lies exactly on the separatrix through the null point.
+  for (const [positive, negative] of [[1, 1], [4, 1], [1, 4], [2, 1], [1, 3]]) {
     const g = geometry({ positive, negative, separation: 2 });
-    const weighted = fieldLines(g, 8, "weighted");
-    const direct = fieldLines(g, 8, "coulomb");
+    const weighted = fieldLines(g, count, "weighted");
+    const direct = fieldLines(g, count, "coulomb");
+    assert.equal(weighted.length, 2 * count);
     assert.equal(weighted.length, direct.length);
     for (let i = 0; i < weighted.length; i++) {
-      assert.ok(["charge", "boundary"].includes(weighted[i].end), `${positive}:${negative} trace ${i}: ${weighted[i].end}`);
+      assert.ok(["charge", "escape"].includes(weighted[i].end), `${positive}:${negative} trace ${i}: ${weighted[i].end}`);
       assert.equal(weighted[i].end, direct[i].end);
       assert.equal(weighted[i].points.length, direct[i].points.length);
       for (let j = 0; j < weighted[i].points.length; j += 20) {
-        assert.ok(distance(weighted[i].points[j], direct[i].points[j]) < 1e-8);
+        assert.ok(distance(weighted[i].points[j], direct[i].points[j]) < 1e-8 * Math.max(1, norm(direct[i].points[j])));
       }
     }
-    assert.ok(weighted.some(line => line.end === "boundary"));
+    const escaped = weighted.filter(line => line.end === "escape").length;
+    assert.equal(escaped, 2 * Math.round(count * escapeFraction(g)), `${positive}:${negative}`);
   }
 });
 

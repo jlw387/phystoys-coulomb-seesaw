@@ -39,31 +39,34 @@ npm run build
 npm run preview
 ```
 
-- **Inputs:** positive and negative charge magnitudes (0.25 to 4), separation (0.5 to 6),
-  slice azimuth, line density, and axial/radial probe position. Coulomb's constant is set to 1.
-  Charge/separation inputs apply on **Update field**; the exploration controls update immediately.
-- **Construction view:** an interactive 3D sphere section, its antipodal lifted charges, projection
-  pole and rays, the physical charge spheres, and reversed seesaw. The **2D** toggle gives an
-  orthographic elevation; radial depth is hidden, not mathematically removed.
-- **Physical view:** the actual 3D point-charge field with a rotatable axial cross-section,
-  potential coloring, field-direction arrows, and optional faint 3D context.
-- **Verification:** independently evaluates direct Coulomb and weighted-sphere potential and field
-  vectors at 180 deterministic points with all three physical coordinates nonzero. The field-line
-  selector switches between these two implementations.
-- **Probe:** the same axial/radial point appears in both views. The construction uses a radial
-  representative; the physical view rotates that representative with the chosen slice.
+The two views fill the window. Everything else lives in two drawers opened from the top bar
+(the charge summary chip also opens **Settings**); `Esc` closes them.
 
-The displayed sphere is an $S^2$ section of $S^3$, sufficient for this axisymmetric construction,
-not a literal embedding of the entire 3-sphere into 3D. In the construction, vertical height is
-the extra coordinate, while the horizontal plane represents a meridional section of physical
-space. The wire grid is only a geometry guide, not a field-line or equipotential grid.
-Charge **volume** scales with magnitude, but the sources remain ideal point charges, not
-conducting balls. Field lines stop at those illustrative surfaces or at a finite plotting
-boundary. Their count is for visualization, not a quantitative measure of charge/flux.
-Crossing this finite boundary does not imply escape to infinity: even a balanced pair has
-large loops that leave the plotted region and return.
-Only opposite-sign pairs are supported; a slice rotates about their common axis, without
-translation, so its field lines truly stay in the slice.
+- **Settings:** charge magnitudes (0.25 to 4) and separation (0.5 to 6), applied on change, plus
+  presets. Also line density, tracing model, slice azimuth, probe position, and on/off switches
+  for every layer: lifted lines and projection rays (construction); field lines, potential
+  color, equipotential contours, and 3D context (physical). Coulomb's constant is 1.
+- **Details:** live verification, seesaw geometry (O, R, d2/d1, pole-axis tilt a), the
+  escaping-line count against Gauss's law, probe readouts, and a short explanation.
+- **Construction view:** the sphere centered on the fulcrum, the pole axis joining the two lifted
+  charges, projection rays from N, and the **traced field lines lifted onto the sphere**.
+  Charge-to-charge lines (mint) run pole to pole; escaping lines (violet) all converge on N,
+  the image of infinity. The same lines are drawn faintly on the world plane underneath. The
+  **2D** toggle gives an orthographic side elevation; depth is hidden, not removed.
+- **Physical view:** the actual 3D point-charge field in a rotatable axial cross-section.
+- **Field lines:** traced with RK4 from the **stronger** charge only, uniform in $\cos\theta$, so each
+  line carries equal axisymmetric flux. The weaker charge therefore receives
+  $|q_\text{weak}|/|q_\text{strong}|$ of them and the rest escape. Escaping lines are followed to
+  200 separations (step size grows with distance), far enough that their lift lies next to N.
+- **Verification:** independently evaluates direct Coulomb and weighted-sphere potential and field
+  vectors at 180 deterministic points with all three physical coordinates nonzero. The tracing
+  model selector switches between these two implementations.
+
+The displayed sphere is the $S^2$ slice of $S^3$ lying over the world plane $z=0$, which is
+sufficient here because the charges sit on that plane. Vertical height is the extra
+coordinate. Charge **volume** scales with magnitude, but the sources remain ideal point charges.
+The physical view clips lines to its plotted square; leaving the square is not the same as
+escaping (balanced pairs have large loops that return). Only opposite-sign pairs are supported.
 
 ## Setup from the video
 

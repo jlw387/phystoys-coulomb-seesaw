@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { chargeRadius, coulomb, fieldLines, projected, type FieldModel, type Geometry, type Vec3 } from "./physics";
+import { chargeRadius, coulomb, distance, lift, type Geometry, type Trace, type Vec3 } from "./physics";
 
 const colors = { positive: 0xff796a, negative: 0x6daaff, mint: 0x89e2c3, muted: 0x596a80, ray: 0xe7c78a };
 type Label = { element: HTMLDivElement; point: THREE.Vector3 };
@@ -78,7 +78,9 @@ export class Viewport {
     const direction = this.flat ? new THREE.Vector3(0, 0, 1) :
       this.kind === "construction" ? new THREE.Vector3(0.35, 0.65, 1.8).normalize() :
         new THREE.Vector3(0.45, 0.7, 1.6).normalize();
-    this.camera.position.copy(this.target).addScaledVector(direction, this.span * 2.15);
+    // Narrow (portrait) panels need the camera further back to fit the same horizontal span.
+    const aspect = Math.max(1, this.host.clientWidth) / Math.max(1, this.host.clientHeight);
+    this.camera.position.copy(this.target).addScaledVector(direction, this.span * 2.15 / Math.min(1, aspect));
     this.camera.up.set(0, 1, 0);
     this.controls.target.copy(this.target);
     this.camera.lookAt(this.target);
@@ -127,10 +129,10 @@ export class Viewport {
     const aspect = this.width / this.height;
     if (this.camera instanceof THREE.PerspectiveCamera) this.camera.aspect = aspect;
     else {
-      this.camera.left = -this.span * aspect;
-      this.camera.right = this.span * aspect;
-      this.camera.top = this.span;
-      this.camera.bottom = -this.span;
+      this.camera.left = -this.span * Math.max(aspect, 1);
+        this.camera.right = this.span * Math.max(aspect, 1);
+        this.camera.top = this.span * Math.max(1, 1 / aspect);
+        this.camera.bottom = -this.span * Math.max(1, 1 / aspect);
       this.camera.near = 0.001;
       this.camera.far = 1000;
     }
@@ -175,11 +177,13 @@ function arrow(parent: THREE.Group, point: Vec3, direction: Vec3, size: number, 
 }
 
 function charges(view: Viewport, g: Geometry, construction = false) {
+  // The construction view is zoomed in, so the illustrative charge spheres are drawn smaller there.
+  const scale = construction ? 0.55 : 1;
   for (const [q, p, color, sign] of [
     [g.positive, g.plus, colors.positive, "+"] as const,
     [g.negative, g.minus, colors.negative, "-"] as const,
   ]) {
-    sphere(view.content, p, chargeRadius(q, g.separation), color);
+    sphere(view.content, p, scale * chargeRadius(q, g.separation), color);
     view.label(`${sign}${q.toFixed(2)}`, [p[0], -g.separation * 0.13, 0],
       sign === "+" ? "#ff9a8f" : "#8ebdff");
   }
@@ -193,69 +197,108 @@ function charges(view: Viewport, g: Geometry, construction = false) {
   }
 }
 
-export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3) {
+const escapeColor = 0xb69cff;
+
+function traceColor(trace: Trace) {
+  return trace.end === "escape" ? escapeColor : colors.mint;
+}
+
+/** Split a polyline into the pieces that lie inside the square |x|, |y| <= half. */
+function clip(points: Vec3[], half: number): Vec3[][] {
+  const pieces: Vec3[][] = [];
+  let current: Vec3[] = [];
+  for (const p of points) {
+    if (Math.abs(p[0]) <= half && Math.abs(p[1]) <= half) current.push(p);
+    else if (current.length) { if (current.length > 1) pieces.push(current); current = []; }
+  }
+  if (current.length > 1) pieces.push(current);
+  return pieces;
+}
+
+export interface ConstructionOptions { lines: boolean; rays: boolean; probe: boolean }
+
+export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, traces: Trace[], options: ConstructionOptions) {
   view.clear();
   const R = g.radius;
   const O = g.origin;
+  // Scene axes: x = charge axis, z = physical y, vertical = the extra (fourth) coordinate.
   const extra = (X: readonly number[]): Vec3 => [O + R * X[0], R * X[3], R * X[1]];
-  const pole: Vec3 = [O, R, 0];
-  const sample: Vec3 = [probe[0], 0, probe[1]];
-  // This displayed S2 is the section of S3 containing the axis, probe, and projection pole.
-  sphere(view.content, [O, 0, 0], R, 0x426a91, 0.055);
-  for (let j = -3; j <= 3; j++) {
-    const latitude = j * Math.PI / 8;
-    const ring: Vec3[] = [];
-    for (let i = 0; i <= 100; i++) {
-      const t = i / 100 * 2 * Math.PI;
-      ring.push([O + R * Math.cos(latitude) * Math.cos(t), R * Math.sin(latitude),
-        R * Math.cos(latitude) * Math.sin(t)]);
-    }
-    line(view.content, ring, colors.muted, 0.5);
+  const toSphere = (p: Vec3) => extra(lift([(p[0] - O) / R, p[1] / R, 0]));
+  const onPlane = (p: Vec3): Vec3 => [p[0], 0, p[1]];
+  const N: Vec3 = [O, R, 0];
+  const half = 2 * g.separation;
+
+  sphere(view.content, [O, 0, 0], R, 0x426a91, 0.07);
+  const equator: Vec3[] = [];
+  const meridian: Vec3[] = [];
+  for (let i = 0; i <= 120; i++) {
+    const t = i / 120 * 2 * Math.PI;
+    equator.push([O + R * Math.cos(t), 0, R * Math.sin(t)]);
+    meridian.push([O + R * Math.cos(t), R * Math.sin(t), 0]);
   }
-  for (let j = 0; j < 8; j++) {
-    const ring: Vec3[] = [];
-    for (let i = 0; i <= 100; i++) {
-      const t = i / 100 * 2 * Math.PI;
-      ring.push([O + R * Math.sin(t) * Math.cos(j * Math.PI / 8), R * Math.cos(t),
-        R * Math.sin(t) * Math.sin(j * Math.PI / 8)]);
-    }
-    line(view.content, ring, colors.muted, 0.45);
-  }
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(g.separation * 2, g.separation * 1.3),
-    new THREE.MeshBasicMaterial({ color: 0x6281a2, side: THREE.DoubleSide, transparent: true, opacity: 0.06, depthWrite: false }));
+  line(view.content, equator, colors.muted, 0.55);
+  line(view.content, meridian, colors.muted, 0.35);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2 * half, 2 * half),
+    new THREE.MeshBasicMaterial({ color: 0x6281a2, side: THREE.DoubleSide, transparent: true, opacity: 0.05, depthWrite: false }));
   plane.rotation.x = -Math.PI / 2;
   view.content.add(plane);
-  line(view.content, [[O, -R * 1.2, 0], [O, R * 1.3, 0]], colors.muted, 0.6, true);
-  const lifted = projected([probe[0], probe[1], 0], g);
-  const X = extra(lifted.X);
+
+  if (options.lines) {
+    const nearest = (p: Vec3): Vec3 => distance(p, g.plus) < distance(p, g.minus) ? g.plus : g.minus;
+    for (const trace of traces) {
+      // Close each line onto its charge centers so the lifted curves meet exactly at the poles.
+      const ends = trace.end === "charge" ? [nearest(trace.points[trace.points.length - 1])] : [];
+      const full = [nearest(trace.points[0]), ...trace.points, ...ends];
+      const lifted = full.map(toSphere);
+      // Escaping lines run on to infinity, which is the projection pole N.
+      if (trace.end === "escape") lifted.push(N);
+      line(view.content, lifted, traceColor(trace), 0.95);
+      for (const piece of clip(full, half)) {
+        line(view.content, piece.map(onPlane), traceColor(trace), 0.35);
+      }
+    }
+  }
+
   const A = extra(g.polePlus);
   const B = extra(g.poleMinus);
-  line(view.content, [A, B], colors.mint, 0.9);
-  for (const [Q, p, color] of [[A, g.plus, colors.positive], [B, g.minus, colors.negative]] as const) {
-    line(view.content, [pole, Q, p], color, 0.55, true);
-    sphere(view.content, Q, 0.018 * g.separation, color);
+  rod(view.content, A, B, g.separation * 0.006, 0xdfe8f3);
+  sphere(view.content, A, 0.022 * g.separation, colors.positive);
+  sphere(view.content, B, 0.022 * g.separation, colors.negative);
+  if (options.rays) {
+    line(view.content, [N, A, g.plus], colors.positive, 0.6, true);
+    line(view.content, [N, B, g.minus], colors.negative, 0.6, true);
   }
-  line(view.content, [pole, X, sample], colors.ray, 0.8, true);
-  line(view.content, [X, A], colors.positive, 0.55);
-  line(view.content, [X, B], colors.negative, 0.55);
-  sphere(view.content, pole, 0.015 * g.separation, colors.ray);
-  sphere(view.content, X, 0.018 * g.separation, colors.ray);
-  sphere(view.content, sample, 0.018 * g.separation, colors.ray);
-  view.label("N / infinity", [O, R + g.separation * 0.06, 0], "#e7c78a");
-  view.label("P / lifted probe", [X[0], X[1] + g.separation * 0.04, X[2]], "#e7c78a");
-  view.label("p", [sample[0], g.separation * 0.04, sample[2]], "#e7c78a");
-  view.label("extra dimension", [O, -R * 1.25, 0]);
+  if (options.probe) {
+    const X = toSphere(probe);
+    const sample = onPlane(probe);
+    line(view.content, [N, X, sample], colors.ray, 0.85, true);
+    sphere(view.content, X, 0.018 * g.separation, colors.ray);
+    sphere(view.content, sample, 0.018 * g.separation, colors.ray);
+    view.label("P", [X[0], X[1] + g.separation * 0.05, X[2]], "#e7c78a");
+    view.label("p", [sample[0], g.separation * 0.05, sample[2]], "#e7c78a");
+  }
+  sphere(view.content, N, 0.018 * g.separation, colors.ray);
+  view.label("N = \u221e", [O, R + g.separation * 0.07, 0], "#e7c78a");
   charges(view, g, true);
   view.render();
 }
 
-function heatmap(g: Geometry) {
+function rod(parent: THREE.Group, a: Vec3, b: Vec3, radius: number, color: number) {
+  const start = new THREE.Vector3(...a);
+  const end = new THREE.Vector3(...b);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, start.distanceTo(end), 10),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.4 }));
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+  parent.add(mesh);
+}
+
+function heatmap(g: Geometry, half: number) {
   const size = 160;
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      const p: Vec3 = [(x / (size - 1) - 0.5) * 6.4 * g.separation,
-        (y / (size - 1) - 0.5) * 6.4 * g.separation, 0];
+      const p: Vec3 = [(x / (size - 1) * 2 - 1) * half, (y / (size - 1) * 2 - 1) * half, 0];
       const v = coulomb(p, g).potential * g.separation / (g.positive + g.negative);
       const intensity = Math.abs(Math.tanh(v * 1.3));
       const color = new THREE.Color(v > 0 ? colors.positive : colors.negative);
@@ -272,43 +315,92 @@ function heatmap(g: Geometry) {
   return texture;
 }
 
-export interface PhysicalOptions { angle: number; count: number; model: FieldModel; context: boolean; potential: boolean }
-
-export function drawPhysical(view: Viewport, g: Geometry, probe: Vec3, options: PhysicalOptions) {
-  view.clear();
-  const { angle, count, model, context, potential } = options;
-  const rotate = (p: Vec3, a: number): Vec3 => [p[0], p[1] * Math.cos(a), p[1] * Math.sin(a)];
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(6.4 * g.separation, 6.4 * g.separation),
-    new THREE.MeshBasicMaterial({ color: potential ? 0xffffff : 0x7894b4,
-      map: potential ? heatmap(g) : null, transparent: true, opacity: potential ? 0.65 : 0.04,
-      side: THREE.DoubleSide, depthWrite: false }));
-  plane.rotation.x = angle;
-  view.content.add(plane);
-  const size = 3.2 * g.separation;
-  line(view.content, [[-size, -size, 0], [size, -size, 0], [size, size, 0],
-    [-size, size, 0], [-size, -size, 0]].map(p => rotate(p as Vec3, angle)), colors.muted, 0.5);
-  line(view.content, [[-size, 0, 0], [size, 0, 0]], colors.muted, 0.65, true);
-  const traces = fieldLines(g, count, model);
-  for (const trace of traces) {
-    line(view.content, trace.points.map(p => rotate(p, angle)), colors.mint, 0.88);
-    if (trace.points.length > 10) {
-      const index = Math.floor(trace.points.length * 0.43);
-      const p = trace.points[index];
-      const e = coulomb(p, g).field;
-      arrow(view.content, rotate(p, angle), rotate(e, angle), g.separation * 0.045, colors.mint);
+/** Marching-squares equipotential segments of the Coulomb potential in the z = 0 slice. */
+export function equipotentials(g: Geometry, half: number, size = 240): Vec3[] {
+  const scale = (g.positive + g.negative) / g.separation;
+  const levels = [-4, -2, -1, -0.5, -0.25, -0.1, 0, 0.1, 0.25, 0.5, 1, 2, 4].map(v => v * scale);
+  const at = (i: number) => (i / (size - 1) * 2 - 1) * half;
+  const grid: number[][] = [];
+  for (let j = 0; j < size; j++) {
+    grid.push([]);
+    for (let i = 0; i < size; i++) {
+      const p: Vec3 = [at(i), at(j), 0];
+      const near = distance(p, g.plus) < chargeRadius(g.positive, g.separation) ||
+        distance(p, g.minus) < chargeRadius(g.negative, g.separation);
+      grid[j].push(near ? NaN : coulomb(p, g).potential);
     }
-    if (context) {
-      for (const a of [Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4]) {
-        line(view.content, trace.points.map(p => rotate(p, angle + a)), 0x6485a9, 0.13);
+  }
+  const segments: Vec3[] = [];
+  const edge = (x0: number, y0: number, v0: number, x1: number, y1: number, v1: number, level: number): Vec3 => {
+    const t = (level - v0) / (v1 - v0);
+    return [x0 + t * (x1 - x0), y0 + t * (y1 - y0), 0];
+  };
+  for (const level of levels) {
+    for (let j = 0; j < size - 1; j++) {
+      for (let i = 0; i < size - 1; i++) {
+        const v = [grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]];
+        if (v.some(Number.isNaN)) continue;
+        const x = [at(i), at(i + 1), at(i + 1), at(i)];
+        const y = [at(j), at(j), at(j + 1), at(j + 1)];
+        const crossings: Vec3[] = [];
+        for (let k = 0; k < 4; k++) {
+          const a = v[k], b = v[(k + 1) % 4];
+          if ((a < level) !== (b < level)) crossings.push(edge(x[k], y[k], a, x[(k + 1) % 4], y[(k + 1) % 4], b, level));
+        }
+        // Saddle cells (4 crossings) are rare here; pairing in edge order is adequate for display.
+        for (let k = 0; k + 1 < crossings.length; k += 2) segments.push(crossings[k], crossings[k + 1]);
       }
     }
   }
-  const worldProbe = rotate(probe, angle);
-  sphere(view.content, worldProbe, g.separation * 0.024, colors.ray);
-  const E = coulomb(worldProbe, g).field;
-  arrow(view.content, worldProbe, E, g.separation * 0.15, colors.ray);
-  view.label("p / probe", [worldProbe[0], worldProbe[1] + 0.1 * g.separation, worldProbe[2]], "#e7c78a");
-  view.label("cross-section", rotate([size * 0.73, -size, 0], angle));
+  return segments;
+}
+
+export interface PhysicalOptions {
+  angle: number; lines: boolean; context: boolean; potential: boolean; equipotentials: boolean; probe: boolean;
+}
+
+export function drawPhysical(view: Viewport, g: Geometry, probe: Vec3, traces: Trace[], options: PhysicalOptions) {
+  view.clear();
+  const { angle } = options;
+  const rotate = (p: Vec3, a: number): Vec3 => [p[0], p[1] * Math.cos(a), p[1] * Math.sin(a)];
+  const half = 3.2 * g.separation;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2 * half, 2 * half),
+    new THREE.MeshBasicMaterial({ color: options.potential ? 0xffffff : 0x7894b4,
+      map: options.potential ? heatmap(g, half) : null, transparent: true, opacity: options.potential ? 0.65 : 0.04,
+      side: THREE.DoubleSide, depthWrite: false }));
+  plane.rotation.x = angle;
+  view.content.add(plane);
+  line(view.content, [[-half, -half, 0], [half, -half, 0], [half, half, 0],
+    [-half, half, 0], [-half, -half, 0]].map(p => rotate(p as Vec3, angle)), colors.muted, 0.5);
+  line(view.content, [[-half, 0, 0], [half, 0, 0]], colors.muted, 0.65, true);
+  if (options.equipotentials) {
+    const segments = new THREE.BufferGeometry().setFromPoints(
+      equipotentials(g, half).map(p => new THREE.Vector3(...rotate(p, angle))));
+    view.content.add(new THREE.LineSegments(segments,
+      new THREE.LineBasicMaterial({ color: 0xe9eef5, transparent: true, opacity: 0.45 })));
+  }
+  if (options.lines) {
+    for (const trace of traces) {
+      const pieces = clip(trace.points, half);
+      for (const piece of pieces) line(view.content, piece.map(p => rotate(p, angle)), traceColor(trace), 0.9);
+      const first = pieces[0];
+      if (first && first.length > 10) {
+        const p = first[Math.floor(first.length * 0.45)];
+        arrow(view.content, rotate(p, angle), rotate(coulomb(p, g).field, angle), g.separation * 0.045, traceColor(trace));
+      }
+      if (options.context) {
+        for (const a of [Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4]) {
+          for (const piece of pieces) line(view.content, piece.map(p => rotate(p, angle + a)), 0x6485a9, 0.13);
+        }
+      }
+    }
+  }
+  if (options.probe) {
+    const worldProbe = rotate(probe, angle);
+    sphere(view.content, worldProbe, g.separation * 0.024, colors.ray);
+    arrow(view.content, worldProbe, coulomb(worldProbe, g).field, g.separation * 0.15, colors.ray);
+    view.label("p", [worldProbe[0], worldProbe[1] + 0.1 * g.separation, worldProbe[2]], "#e7c78a");
+  }
   charges(view, g);
   view.render();
 }
