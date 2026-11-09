@@ -258,6 +258,17 @@ export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, sets:
       line(view.content, [source, ...trace.points, ...closing].map(extra), color, opacity);
     }
   };
+  if (g.sign2 > 0) {
+    // Like charges: F = 1/c1 + 1/c2 is smallest on the equator between the poles, where unweighted lines stall.
+    const A4 = g.polePlus;
+    const m = Math.hypot(A4[0], A4[3]);
+    const ring: Vec3[] = [];
+    for (let i = 0; i <= 120; i++) {
+      const a = i / 120 * 2 * Math.PI;
+      ring.push(extra([-A4[3] / m * Math.cos(a), Math.sin(a), 0, A4[0] / m * Math.cos(a)]));
+    }
+    line(view.content, ring, 0xe9eef5, 0.55, true);
+  }
   if (options.longitudes) drawSet(sets.longitudes, () => [longitudeColor, 0.5]);
   if (options.lines) drawSet(sets.weighted, trace => [trace.end === "escape" ? escapeColor : colors.mint, 0.95]);
 

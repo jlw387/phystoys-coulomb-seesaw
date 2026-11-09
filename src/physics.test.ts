@@ -169,7 +169,7 @@ test("like charges: same fulcrum sphere, equal same-sign sphere charges, all lin
     for (const line of sphereLines(g, count, 0)) {
       assert.equal(line.end, "null");
       const X = line.points[line.points.length - 1];
-      assert.ok(Math.abs(X.reduce((s, v, i) => s + v * g.polePlus[i], 0)) < 0.02, "ends on the equator");
+      assert.ok(Math.abs(X.reduce((s, v, i) => s + v * g.polePlus[i], 0)) < 1e-6, "ends exactly on the equator");
     }
   }
 });

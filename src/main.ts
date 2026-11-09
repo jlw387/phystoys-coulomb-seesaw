@@ -146,7 +146,7 @@ root.innerHTML = `
     <p class="identity">V(p) = C &middot; w(X) &middot; F(X), &nbsp; C = 2&radic;(q&#8321;&#178;+q&#8322;&#178;)/L</p>
     <p>Why w: stereographic projection is an inversion through N, and w is Kelvin's inversion factor, the same factor as in the image-charge method. In 2D that factor is 1, which is why the flat longitudes alone work there for equal charges.</p>
     <p>Why lines reach N: w = 0 at N, so N acts as a sink of strength F(N) &prop; q&#8321; + q&#8322; (with signs). At 0% no curve can reach N.</p>
-    <p>Like charges use the same fulcrum, sphere, poles and weight; only the second sphere charge flips sign, so F = 1/c&#8321; + 1/c&#8322;. F then has a minimum on the equator between the poles, and the unweighted paths from both poles stall there. The weight is what sends every line up to N.</p>
+    <p>Like charges use the same fulcrum, sphere, poles and weight; only the second sphere charge flips sign, so F = 1/c&#8321; + 1/c&#8322;. F then has a minimum on the equator between the poles, and the unweighted paths from both poles stall there (the dashed ring). The weight is what sends every line up to N.</p>
     <p class="hint-text">Lines start at the stronger charge with equal flux each. Coulomb constant k = 1. Charge sphere volume &prop; |q|; the sources are ideal points. The displayed sphere is the 2-sphere slice of S&#179; over the z = 0 world plane.</p>
   </aside>`;
 

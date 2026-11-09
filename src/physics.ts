@@ -234,17 +234,34 @@ export function sphereLines(g: Geometry, count: number, t: number): SphereTrace[
       return m < 1e-12 ? undefined : d.map(v => sign * v / m) as Vec4;
     };
     const shift = (Y: Vec4, k: Vec4, f: number) => Y.map((v, i) => v + h * f * k[i]) as Vec4;
+    const onSphere = (Y: number[]) => { const m = norm(Y); return Y.map(v => v / m) as Vec4; };
+    const dot = (a: number[], b: number[]) => a.reduce((s, v, j) => s + v * b[j], 0);
+    // Finish a stalled line exactly where the flow along k1 reverses (the critical set), not a step short.
+    const stall = (k1: Vec4) => {
+      const along = (s: number) => {
+        const d = tangent(onSphere(X.map((v, j) => v + s * k1[j])));
+        return d ? dot(d, k1) : 0;
+      };
+      let lo = 0, hi = h;
+      while (hi < 8 * h && along(hi) >= 0) hi *= 2;
+      if (along(hi) < 0) {
+        for (let n = 0; n < 40; n++) { const mid = (lo + hi) / 2; if (along(mid) > 0) lo = mid; else hi = mid; }
+        points.push(onSphere(X.map((v, j) => v + lo * k1[j])));
+      }
+      return { points, end: "null" as const };
+    };
     for (let i = 0; i < 4000; i++) {
       if (distance(X, target) < hitTarget) return { points, end: "charge" as const };
       if (distance(X, NORTH) < hitNorth) return { points, end: "escape" as const };
       const k1 = tangent(X); if (!k1) return { points, end: "null" as const };
-      if (previous && k1.reduce((s, v, j) => s + v * previous![j], 0) < -0.5) return { points, end: "null" as const };
+      // Reversed: the critical set now lies just ahead along the new direction.
+      if (previous && dot(k1, previous) < -0.5) return stall(k1);
       previous = k1;
-      const k2 = tangent(shift(X, k1, 0.5)); if (!k2) return { points, end: "null" as const };
-      const k3 = tangent(shift(X, k2, 0.5)); if (!k3) return { points, end: "null" as const };
-      const k4 = tangent(shift(X, k3, 1)); if (!k4) return { points, end: "null" as const };
+      const k2 = tangent(shift(X, k1, 0.5)); if (!k2) return stall(k1);
+      const k3 = tangent(shift(X, k2, 0.5)); if (!k3) return stall(k1);
+      const k4 = tangent(shift(X, k3, 1)); if (!k4) return stall(k1);
       const k = k1.map((v, j) => (v + 2 * k2[j] + 2 * k3[j] + k4[j]) / 6);
-      if (k.reduce((s, v, j) => s + v * k1[j], 0) < 0.5) return { points, end: "null" as const };
+      if (dot(k, k1) < 0.5) return stall(k1);
       const next = X.map((v, j) => v + h * k[j]);
       const m = norm(next);
       X = next.map(v => v / m) as Vec4;

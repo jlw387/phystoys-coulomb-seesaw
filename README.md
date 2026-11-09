@@ -315,7 +315,9 @@ change is $F = 1/c_1 + 1/c_2$.
 - **Same curves, different flow.** $F$ is still constant on rings about the $A$–$B$ axis, so the
   longitudes are the same curves. Along a longitude, though, $F$ now falls from $+\infty$ at $A$ to a
   minimum on the equator and rises again to $+\infty$ at $B$. Its steepest paths from both poles
-  therefore **stall on the equator**, and the unweighted picture is degenerate.
+  therefore **stall on the equator**, and the unweighted picture is degenerate. The app draws
+  that equator as a dashed ring and ends each stalled path exactly on it, using bisection to find
+  where the flow reverses.
 - **The weight does all the work.** $G = wF$ sends every line to $N$, since all of the flux
   $q_1+q_2$ must reach infinity. The real null point between the charges is where the equator gets
   pinched.
