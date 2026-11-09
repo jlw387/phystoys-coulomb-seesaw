@@ -92,7 +92,7 @@ root.innerHTML = `
     <label class="check"><input id="context" type="checkbox" checked> Faint 3D context around the axis</label>
     <label class="check"><input id="physical-longitudes" type="checkbox"> Projected longitudes (2D-world circles)</label>
     <h3>Probe</h3>
-    <label class="check"><input id="probe" type="checkbox" checked> Show probe in both views</label>
+    <label class="check"><input id="probe" type="checkbox"> Show probe in both views</label>
     <label class="range" for="probe-x">Axial position <output id="probe-x-value"></output></label>
     <input id="probe-x" type="range" min="-1.5" max="1.5" step="0.01" value="0.15">
     <label class="range" for="probe-rho">Distance from axis <output id="probe-rho-value"></output></label>
@@ -167,7 +167,7 @@ function reportFailure(cause: unknown) {
 const defaults: Record<string, string | boolean> = {
   positive: "2", negative: "1", separation: "2", density: "12", model: "weighted", angle: "0",
   "probe-x": "0.15", "probe-rho": "0.45", "sphere-lines": true, rays: true, lines: true,
-  potential: true, equipotentials: false, context: true, probe: true,
+  potential: true, equipotentials: false, context: true, probe: false,
   "weight-t": "100", "sphere-longitudes": true, "physical-longitudes": false,
 };
 
