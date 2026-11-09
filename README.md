@@ -241,6 +241,35 @@ placing their images in the physical world. Then:
   - The mismatch also shows up as flux. Every projected longitude joins the two charges except the
     one through the projection pole, yet for $q_1\ne q_2$ the excess flux has to escape to infinity.
 
+### 7. Off-plane charges: any sphere, any charges
+
+**Dimensions.** The physical world is $\mathbb R^3$ and lifts to $S^3\subset\mathbb R^4$. With every charge
+at $z=0$, the world plane $z=0$ lifts into the slice $X_3=0$ of $S^3$, which is an ordinary 2-sphere.
+That 2-sphere lives in the 3D space (x, y, extra), so it can be drawn faithfully above the xy plane,
+and projecting it from $N$ lands back on the xy plane. The physics is still 3D ($1/r^2$, weight $w$).
+Field and equipotential lines are drawn only in the $z=0$ slice.
+
+**General rule.** Charges live on the sphere off the plane, and projection puts them in the plane.
+Take *any* sphere (center $O$, radius $R$). A sphere charge $s_i$ at $Q_i$ projects to a physical charge
+
+$$q_i=\frac{R\,s_i}{c_N(Q_i)},\qquad V(p)=w(p)\sum_i\frac{s_i}{|X(p)-Q_i|},$$
+
+where $c_N$ is the unit-sphere chord to the projection pole $N$. This holds for any number of charges,
+any signs, and any positions. It was checked to $3\times10^{-12}$ for 200 random spheres and
+configurations, and [physics.test.ts](./src/physics.test.ts) covers it as a regression test.
+
+- **The seesaw is one gauge choice.** The fulcrum sphere of §4 is the special sphere on which a
+  $+q_1/-q_2$ pair becomes *equal and opposite* ($s=\pm A=\pm2\sqrt{q_1^2+q_2^2}/L$) and *antipodal*. Other spheres work too; the sphere charges just aren't balanced.
+- **Height sets strength.** $c_N^2=2(1-h)$, where $h$ is the height above the plane in units of $R$. So
+  $q\propto s/\sqrt{1-h}$: strength *grows* with height, is $s/2$ at the bottom (projecting to $O$),
+  and is infinite at the top pole $N$, whose image is infinity. The side of the plane does not set the sign.
+- **Field lines still do not transfer.** Moving the charges off the plane does not remove the weight,
+  so the real field lines are still not projected longitudes.
+
+A rule where strength *decreases* with distance from the plane and is infinite *on* the plane is not
+produced by stereographic projection, since its weight blows up only at $N$. That would be a different
+model that still needs to be checked against Coulomb's law.
+
 ## Open questions / next steps
 
 - **Implemented:** unequal-pair visualization, weighted potential/gradient, and the fulcrum $O$.

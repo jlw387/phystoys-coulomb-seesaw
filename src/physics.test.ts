@@ -81,6 +81,36 @@ test("charge volume scales with magnitude and cancellation near zero potential r
   }
 });
 
+test("off-plane rule: any sphere and charges, q = R s / c_N, V = w * sum s/c", () => {
+  let seed = 7;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647 * 2 - 1; };
+  const N = [0, 0, 0, 1];
+  for (let trial = 0; trial < 40; trial++) {
+    const O: [number, number, number] = [3 * rand(), 3 * rand(), 3 * rand()];
+    const R = Math.exp(rand());
+    const charges = Array.from({ length: 1 + (trial % 4) }, () => ({
+      p: [3 * rand(), 3 * rand(), 3 * rand()] as [number, number, number], q: 4 * rand() }));
+    const toU = (p: number[]) => p.map((v, i) => (v - O[i]) / R) as [number, number, number];
+    const sphere = charges.map(({ p, q }) => {
+      const Q = lift(toU(p));
+      return { Q, s: q * distance(Q, N) / R };
+    });
+    for (let k = 0; k < 30; k++) {
+      const x: [number, number, number] = [4 * rand(), 4 * rand(), 4 * rand()];
+      const u = toU(x);
+      const w = 1 / Math.sqrt(1 + norm(u) ** 2);
+      const X = lift(u);
+      const V = charges.reduce((sum, { p, q }) => sum + q / distance(x, p), 0);
+      const F = sphere.reduce((sum, { Q, s }) => sum + s / distance(X, Q), 0);
+      assert.ok(Math.abs(V - w * F) <= 1e-9 * Math.max(1, Math.abs(V)));
+    }
+  }
+  const g = geometry({ positive: 2, negative: 1, separation: 2 });
+  const s1 = g.positive * distance(g.polePlus, N) / g.radius;
+  const s2 = g.negative * distance(g.poleMinus, N) / g.radius;
+  assert.ok(Math.abs(s1 - g.amplitude) < 1e-12 && Math.abs(s2 - g.amplitude) < 1e-12);
+});
+
 test("invalid inputs and charge singularities are explicit errors", () => {
   for (const positive of [0, -1, NaN, Infinity]) {
     assert.throws(() => geometry({ positive, negative: 1, separation: 2 }), RangeError);
