@@ -49,11 +49,14 @@ The two views fill the window. Everything else lives in two drawers opened from 
 - **Details:** live verification, seesaw geometry (O, R, d2/d1, pole-axis tilt a), the
   escaping-line count against Gauss's law, probe readouts, and a short explanation.
 - **Construction view:** the sphere centered on the fulcrum, the pole axis joining the two lifted
-  charges, projection rays from N, and the **traced field lines lifted onto the sphere**.
-  Charge-to-charge lines (mint) run pole to pole; escaping lines (violet) all converge on N,
-  the image of infinity. The same lines are drawn faintly on the world plane underneath. The
-  **2D** toggle gives an orthographic side elevation; depth is hidden, not removed.
-- **Physical view:** the actual 3D point-charge field in a rotatable axial cross-section.
+  charges, and projection rays from N. Lines are traced **on the sphere** as steepest paths of
+  $G_t = w^t F$ (§8). Grey reference curves are the unweighted longitudes of $F$ ($t=0$); the
+  **Weight applied** slider and ▶ button bend them into the real lines ($t=1$). Charge-to-charge
+  lines are mint; lines reaching N (infinity) are violet. Every curve is also projected faintly onto
+  the world plane underneath. Only $t=0$ and $t=1$ are physical; intermediate values are an
+  illustrative interpolation. The **2D** toggle gives an orthographic side elevation.
+- **Physical view:** the actual 3D point-charge field in a rotatable axial cross-section, with an
+  optional overlay of the projected longitudes (circles through both charges).
 - **Field lines:** traced with RK4 from the **stronger** charge only, uniform in $\cos\theta$, so each
   line carries equal axisymmetric flux. The weaker charge therefore receives
   $|q_\text{weak}|/|q_\text{strong}|$ of them and the rest escape. Escaping lines are followed to
@@ -272,6 +275,35 @@ configurations, and [physics.test.ts](./src/physics.test.ts) covers it as a regr
 A rule where strength *decreases* with distance from the plane and is infinite *on* the plane is not
 produced by stereographic projection, since its weight blows up only at $N$. That would be a different
 model that still needs to be checked against Coulomb's law.
+
+### 8. The construction step by step, and why the weight is not arbitrary
+
+1. **Fulcrum.** $O$ splits the separation so $d_1:d_2=q_1^2:q_2^2$.
+2. **Sphere.** Radius $R=\sqrt{d_1d_2}$ centered on $O$; the projection point $N$ (infinity) is straight above.
+3. **Lift.** Rays from $N$ to the charges cross the sphere at antipodal poles $A$ and $B$.
+4. **Weight.** On the unit sphere, $F=1/|X-A|-1/|X-B|$ is constant on rings about the $A$–$B$ axis,
+   so its steepest paths are flat longitudes. The weight $w=|X-N|/2$ is constant on rings about
+   the vertical axis. Their product $G=wF$ has bent steepest paths; trace those on the sphere.
+5. **Project.** $V(p)=A\,G(X(p))$ exactly, so level sets of $G$ project to equipotentials. Stereographic
+   projection preserves right angles, so $G$'s steepest paths project onto the real field lines.
+
+The weight lives on the *potential*, not the lines; the lines are whatever the weighted potential's
+gradient produces. Dividing $\nabla G$ by $w$ gives the finite direction $\nabla F + F\,\nabla w/w$.
+Since $w=0$ at $N$, $N$ acts as a sink of strength $F(N)=(q_1-q_2)/(AR)$; it vanishes for equal charges,
+and at $t=0$ no longitude can reach it.
+
+**Why $w$:** stereographic projection is an inversion through $N$ with radius $\sqrt2$ (on the unit
+sphere). Kelvin's theorem says inversion preserves harmonic functions in $n$ dimensions only after
+multiplying by $(\rho/r)^{n-2}$; in 3D that is exactly $w$. It is the same factor as in the
+image-charge method ($q'=-qa/d$ for a grounded sphere): inversion rescales distances, and a $1/r$
+potential must be rescaled to match. In 2D the factor is $1$. There, the log potential picks up an
+*additive* $Q_\text{net}\ln(\text{stretch})$ instead, which a charge $-Q_\text{net}$ at $N$ cancels exactly.
+
+**Tested in [physics.test.ts](./src/physics.test.ts):** sphere-traced steepest paths of $G$ project onto
+the real lines (constant 3D flux label to $10^{-6}$) with the same escape pattern. At $t=0$ they
+project onto circles through both charges and none escape. Separately checked: a non-conformal
+ellipsoid can't fix the shape (vertical stretch has no effect; best in-plane stretch leaves 25% of
+the sphere's error) or the counting.
 
 ## Open questions / next steps
 

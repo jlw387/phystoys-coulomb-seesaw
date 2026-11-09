@@ -1,7 +1,7 @@
 import "./style.css";
 import { Vector3 } from "three";
 import {
-  coulomb, escapeFraction, fieldLines, geometry, projected, verification,
+  coulomb, escapeFraction, fieldLines, geometry, projected, sphereLines, verification,
   type FieldModel, type Geometry, type Trace, type Vec3,
 } from "./physics";
 import { drawConstruction, drawPhysical, Viewport } from "./views";
@@ -29,10 +29,18 @@ root.innerHTML = `
           <div class="segmented" role="group" aria-label="Construction camera"><button id="mode-2d" aria-pressed="false">2D</button><button id="mode-3d" aria-pressed="true">3D</button></div>
           <button class="camera-reset" id="reset-construction" aria-label="Reset construction camera" title="Reset camera">&#8634;</button>
         </div>
+        <div class="overlay weight-control">
+          <button id="play-weight" class="play" aria-label="Animate the weight from 0% to 100%" title="Animate 0% to 100%">&#9654;</button>
+          <div class="weight-body">
+            <label for="weight-t"><span>Weight applied: G = w<sup id="weight-exponent">1.00</sup> &middot; F</span> <output id="weight-t-value"></output></label>
+            <input id="weight-t" type="range" min="0" max="100" step="1" value="100">
+            <div class="weight-ends"><span>0%: longitudes of F</span><span>100%: real field</span></div>
+          </div>
+        </div>
         <div class="overlay bottom-left legend">
-          <span><i class="dot mint"></i>Field line, charge to charge</span>
-          <span><i class="dot violet"></i>Escapes to infinity = N</span>
-          <span><i class="dot white"></i>Pole axis</span>
+          <span><i class="dot grey"></i>Longitudes of F (unweighted)</span>
+          <span><i class="dot mint"></i>Lines of G, charge to charge</span>
+          <span><i class="dot violet"></i>Lines of G to N = &infin;</span>
           <span class="hint" id="construction-hint">Drag to orbit &middot; scroll to zoom</span>
         </div>
       </div>
@@ -72,7 +80,8 @@ root.innerHTML = `
       <select id="model"><option value="weighted">Weighted sphere gradient</option><option value="coulomb">Direct Coulomb field</option></select>
     </label>
     <h3>Construction view</h3>
-    <label class="check"><input id="sphere-lines" type="checkbox" checked> Field lines lifted onto the sphere</label>
+    <label class="check"><input id="sphere-lines" type="checkbox" checked> Weighted lines (steepest paths of G)</label>
+    <label class="check"><input id="sphere-longitudes" type="checkbox" checked> Unweighted longitudes of F (reference)</label>
     <label class="check"><input id="rays" type="checkbox" checked> Projection rays from N</label>
     <h3>Physical view</h3>
     <label class="range" for="angle">Slice azimuth <output id="angle-value"></output></label>
@@ -81,6 +90,7 @@ root.innerHTML = `
     <label class="check"><input id="potential" type="checkbox" checked> Potential color</label>
     <label class="check"><input id="equipotentials" type="checkbox"> Equipotential contours</label>
     <label class="check"><input id="context" type="checkbox" checked> Faint 3D context around the axis</label>
+    <label class="check"><input id="physical-longitudes" type="checkbox"> Projected longitudes (2D-world circles)</label>
     <h3>Probe</h3>
     <label class="check"><input id="probe" type="checkbox" checked> Show probe in both views</label>
     <label class="range" for="probe-x">Axial position <output id="probe-x-value"></output></label>
@@ -118,15 +128,22 @@ root.innerHTML = `
     <dl class="readout">
       <div><dt>Weight w</dt><dd id="weight"></dd></div>
       <div><dt>Sphere function F</dt><dd id="sphere-potential"></dd></div>
-      <div><dt>A &middot; w &middot; F</dt><dd id="weighted-potential"></dd></div>
+      <div><dt>C &middot; w &middot; F</dt><dd id="weighted-potential"></dd></div>
       <div><dt>Coulomb potential</dt><dd id="direct-potential"></dd></div>
       <div><dt>|E|</dt><dd id="field-strength"></dd></div>
     </dl>
-    <h3>What the construction says</h3>
-    <p class="identity">V(p) = A &middot; w(p) &middot; [1/c&#8321; &minus; 1/c&#8322;]</p>
-    <p>The sphere is centered on the fulcrum, and the two charges lift to opposite poles. On the sphere, the longitudes are the field lines of F. Projection multiplies F by the weight w, which is half the chord distance to N. The real field is &minus;&nabla;(wF), and the weight term bends the lines away from circles.</p>
-    <p>Lines that escape in the real world run to infinity, which is the single point N on the sphere. N absorbs the excess charge q&#8321; &minus; q&#8322;. Lines are traced from the stronger charge with equal flux per line, so the weaker charge receives |q_weak|/|q_strong| of them.</p>
-    <p class="hint-text">Coulomb constant k = 1. Charge sphere volume &prop; |q|; the sources are ideal points. The displayed sphere is the 2-sphere slice of S&#179; that lies over the z = 0 world plane.</p>
+    <h3>How the construction works</h3>
+    <ol class="steps">
+      <li><strong>Fulcrum.</strong> O splits the separation so d&#8321; : d&#8322; = q&#8321;&#178; : q&#8322;&#178;.</li>
+      <li><strong>Sphere.</strong> Radius R = &radic;(d&#8321;d&#8322;), centered on O, with N (infinity) straight above.</li>
+      <li><strong>Lift.</strong> Rays from N to each charge cross the sphere at opposite poles A and B.</li>
+      <li><strong>Weight.</strong> F = 1/|X&minus;A| &minus; 1/|X&minus;B| is constant on rings around the A&ndash;B axis; its steepest paths are the flat longitudes (grey). The weight w = |X&minus;N|/2 is constant on rings around the vertical axis. Multiply: G = w&middot;F. Its steepest paths, traced on the sphere, are the bent curves (mint and violet). The slider traces G = w<sup>t</sup>F; only 0% and 100% have physical meaning.</li>
+      <li><strong>Project.</strong> V(p) = C&middot;G(X) exactly, and projection preserves right angles, so G's steepest paths land on the real field lines.</li>
+    </ol>
+    <p class="identity">V(p) = C &middot; w(X) &middot; F(X), &nbsp; C = 2&radic;(q&#8321;&#178;+q&#8322;&#178;)/L</p>
+    <p>Why w: stereographic projection is an inversion through N, and w is Kelvin's inversion factor, the same factor as in the image-charge method. In 2D that factor is 1, which is why the flat longitudes alone work there for equal charges.</p>
+    <p>Why lines reach N: w = 0 at N, so N acts as a sink of strength F(N) &prop; q&#8321; &minus; q&#8322;. At 0% no curve can reach N; every longitude runs pole to pole.</p>
+    <p class="hint-text">Lines start at the stronger charge with equal flux each. Coulomb constant k = 1. Charge sphere volume &prop; |q|; the sources are ideal points. The displayed sphere is the 2-sphere slice of S&#179; over the z = 0 world plane.</p>
   </aside>`;
 
 function element<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -151,6 +168,7 @@ const defaults: Record<string, string | boolean> = {
   positive: "2", negative: "1", separation: "2", density: "12", model: "weighted", angle: "0",
   "probe-x": "0.15", "probe-rho": "0.45", "sphere-lines": true, rays: true, lines: true,
   potential: true, equipotentials: false, context: true, probe: true,
+  "weight-t": "100", "sphere-longitudes": true, "physical-longitudes": false,
 };
 
 function start() {
@@ -164,17 +182,40 @@ function start() {
   }
   let g: Geometry = geometry({ positive: 2, negative: 1, separation: 2 });
   let pending = 0;
-  let cache: { key: string; traces: Trace[] } | undefined;
+  let pendingConstruction = 0;
+  const caches = new Map<string, unknown>();
+  function cached<T>(key: string, make: () => T): T {
+    if (!caches.has(key)) {
+      if (caches.size > 64) caches.clear();
+      caches.set(key, make());
+    }
+    return caches.get(key) as T;
+  }
 
   const probe = (): Vec3 => [Number(input("probe-x").value) * g.separation,
     Number(input("probe-rho").value) * g.separation, 0];
+  const count = () => Number(input("density").value);
+  const weightT = () => Number(input("weight-t").value) / 100;
+  const systemKey = () => `${g.positive},${g.negative},${g.separation},${count()}`;
 
   function traces(): Trace[] {
-    const count = Number(input("density").value);
     const model = element<HTMLSelectElement>("model").value as FieldModel;
-    const key = `${g.positive},${g.negative},${g.separation},${count},${model}`;
-    if (cache?.key !== key) cache = { key, traces: fieldLines(g, count, model) };
-    return cache.traces;
+    return cached(`real:${systemKey()}:${model}`, () => fieldLines(g, count(), model));
+  }
+  const longitudes = () => cached(`sphere:${systemKey()}:0`, () => sphereLines(g, count(), 0));
+  const weighted = (t: number) => cached(`sphere:${systemKey()}:${t}`, () => sphereLines(g, count(), t));
+
+  function drawConstructionView() {
+    pendingConstruction = 0;
+    try {
+      const t = weightT();
+      drawConstruction(construction, g, probe(), { weighted: weighted(t), longitudes: longitudes() }, {
+        lines: checked("sphere-lines"), longitudes: checked("sphere-longitudes"),
+        rays: checked("rays"), probe: checked("probe"),
+      });
+      text("weight-t-value", `${Math.round(t * 100)}%`);
+      text("weight-exponent", t.toFixed(2));
+    } catch (cause) { reportFailure(cause); }
   }
 
   function draw() {
@@ -182,13 +223,12 @@ function start() {
     try {
       const p = probe();
       const lines = traces();
-      drawConstruction(construction, g, p, lines, {
-        lines: checked("sphere-lines"), rays: checked("rays"), probe: checked("probe"),
-      });
-      drawPhysical(physical, g, p, lines, {
+      drawConstructionView();
+      drawPhysical(physical, g, p, lines, longitudes(), {
         angle: Number(input("angle").value) * Math.PI / 180,
         lines: checked("lines"), context: checked("context"), potential: checked("potential"),
         equipotentials: checked("equipotentials"), probe: checked("probe"),
+        longitudes: checked("physical-longitudes"),
       });
       const result = projected(p, g);
       const exact = coulomb(p, g);
@@ -253,9 +293,39 @@ function start() {
   form.addEventListener("submit", event => { event.preventDefault(); updateSystem(); });
   for (const id of ["positive", "negative", "separation"]) input(id).addEventListener("change", () => updateSystem());
   for (const id of ["angle", "density", "probe-x", "probe-rho", "model", "context", "potential",
-    "equipotentials", "lines", "sphere-lines", "rays", "probe"]) {
+    "equipotentials", "lines", "sphere-lines", "rays", "probe", "sphere-longitudes", "physical-longitudes"]) {
     element(id).addEventListener("input", scheduleDraw);
   }
+  const scheduleConstruction = () => {
+    if (!pendingConstruction) pendingConstruction = requestAnimationFrame(drawConstructionView);
+  };
+  let animation = 0;
+  const play = element<HTMLButtonElement>("play-weight");
+  function stopAnimation() {
+    cancelAnimationFrame(animation);
+    animation = 0;
+    play.innerHTML = "&#9654;";
+    play.setAttribute("aria-label", "Animate the weight from 0% to 100%");
+  }
+  input("weight-t").addEventListener("input", () => { stopAnimation(); scheduleConstruction(); });
+  play.addEventListener("click", () => {
+    if (animation) { stopAnimation(); return; }
+    play.innerHTML = "&#10074;&#10074;";
+    play.setAttribute("aria-label", "Pause the weight animation");
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduced ? 1 : 3200;
+    const begin = performance.now();
+    const tick = (now: number) => {
+      const s = Math.min(1, (now - begin) / duration);
+      // Hold briefly at 0% so the flat longitudes are seen before they bend.
+      const eased = s < 0.15 ? 0 : 0.5 - 0.5 * Math.cos(Math.PI * (s - 0.15) / 0.85);
+      input("weight-t").value = String(Math.round(eased * 100));
+      drawConstructionView();
+      if (s < 1) animation = requestAnimationFrame(tick);
+      else stopAnimation();
+    };
+    animation = requestAnimationFrame(tick);
+  });
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-preset]")) {
     button.addEventListener("click", () => {
       const [positive, negative] = button.dataset.preset!.split(",");
@@ -304,6 +374,7 @@ function start() {
   });
 
   element("reset").addEventListener("click", () => {
+    stopAnimation();
     for (const [id, value] of Object.entries(defaults)) {
       const field = element<HTMLInputElement | HTMLSelectElement>(id);
       if (typeof value === "boolean") (field as HTMLInputElement).checked = value;
@@ -314,6 +385,8 @@ function start() {
   });
   window.addEventListener("pagehide", () => {
     cancelAnimationFrame(pending);
+    cancelAnimationFrame(pendingConstruction);
+    stopAnimation();
     construction.dispose();
     physical.dispose();
   }, { once: true });

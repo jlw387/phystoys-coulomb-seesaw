@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { chargeRadius, coulomb, distance, lift, type Geometry, type Trace, type Vec3 } from "./physics";
+import { chargeRadius, coulomb, distance, fromSphere, lift, NORTH, type Geometry, type SphereTrace, type Trace, type Vec3 } from "./physics";
 
 const colors = { positive: 0xff796a, negative: 0x6daaff, mint: 0x89e2c3, muted: 0x596a80, ray: 0xe7c78a };
 type Label = { element: HTMLDivElement; point: THREE.Vector3 };
@@ -198,6 +198,7 @@ function charges(view: Viewport, g: Geometry, construction = false) {
 }
 
 const escapeColor = 0xb69cff;
+const longitudeColor = 0xa9b9cc;
 
 function traceColor(trace: Trace) {
   return trace.end === "escape" ? escapeColor : colors.mint;
@@ -215,9 +216,10 @@ function clip(points: Vec3[], half: number): Vec3[][] {
   return pieces;
 }
 
-export interface ConstructionOptions { lines: boolean; rays: boolean; probe: boolean }
+export interface ConstructionOptions { lines: boolean; longitudes: boolean; rays: boolean; probe: boolean }
+export interface ConstructionLines { weighted: SphereTrace[]; longitudes: SphereTrace[] }
 
-export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, traces: Trace[], options: ConstructionOptions) {
+export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, sets: ConstructionLines, options: ConstructionOptions) {
   view.clear();
   const R = g.radius;
   const O = g.origin;
@@ -243,21 +245,23 @@ export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, trace
   plane.rotation.x = -Math.PI / 2;
   view.content.add(plane);
 
-  if (options.lines) {
-    const nearest = (p: Vec3): Vec3 => distance(p, g.plus) < distance(p, g.minus) ? g.plus : g.minus;
-    for (const trace of traces) {
-      // Close each line onto its charge centers so the lifted curves meet exactly at the poles.
-      const ends = trace.end === "charge" ? [nearest(trace.points[trace.points.length - 1])] : [];
-      const full = [nearest(trace.points[0]), ...trace.points, ...ends];
-      const lifted = full.map(toSphere);
-      // Escaping lines run on to infinity, which is the projection pole N.
-      if (trace.end === "escape") lifted.push(N);
-      line(view.content, lifted, traceColor(trace), 0.95);
-      for (const piece of clip(full, half)) {
-        line(view.content, piece.map(onPlane), traceColor(trace), 0.35);
-      }
+  // Each set is traced on the sphere, then dropped onto the world plane by projection from N.
+  const drawSet = (set: SphereTrace[], styled: (trace: SphereTrace) => [number, number, number]) => {
+    for (const trace of set) {
+      const [color, sphereOpacity, planeOpacity] = styled(trace);
+      const first = trace.points[0];
+      const source = distance(first, g.polePlus) < distance(first, g.poleMinus) ? g.polePlus : g.poleMinus;
+      const sink = source === g.polePlus ? g.poleMinus : g.polePlus;
+      // Close each curve onto its poles (or N) so the sphere curves meet exactly at the lifted charges.
+      const closing = trace.end === "charge" ? [sink] : trace.end === "escape" ? [NORTH] : [];
+      const full = [source, ...trace.points, ...closing];
+      line(view.content, full.map(extra), color, sphereOpacity);
+      const flat = full.filter(X => X !== NORTH).map(X => fromSphere(X, g));
+      for (const piece of clip(flat, half)) line(view.content, piece.map(onPlane), color, planeOpacity);
     }
-  }
+  };
+  if (options.longitudes) drawSet(sets.longitudes, () => [longitudeColor, 0.5, 0.22]);
+  if (options.lines) drawSet(sets.weighted, trace => [trace.end === "escape" ? escapeColor : colors.mint, 0.95, 0.35]);
 
   const A = extra(g.polePlus);
   const B = extra(g.poleMinus);
@@ -357,9 +361,11 @@ export function equipotentials(g: Geometry, half: number, size = 240): Vec3[] {
 
 export interface PhysicalOptions {
   angle: number; lines: boolean; context: boolean; potential: boolean; equipotentials: boolean; probe: boolean;
+  longitudes: boolean;
 }
 
-export function drawPhysical(view: Viewport, g: Geometry, probe: Vec3, traces: Trace[], options: PhysicalOptions) {
+export function drawPhysical(view: Viewport, g: Geometry, probe: Vec3, traces: Trace[], longitudes: SphereTrace[],
+  options: PhysicalOptions) {
   view.clear();
   const { angle } = options;
   const rotate = (p: Vec3, a: number): Vec3 => [p[0], p[1] * Math.cos(a), p[1] * Math.sin(a)];
@@ -378,6 +384,14 @@ export function drawPhysical(view: Viewport, g: Geometry, probe: Vec3, traces: T
       equipotentials(g, half).map(p => new THREE.Vector3(...rotate(p, angle))));
     view.content.add(new THREE.LineSegments(segments,
       new THREE.LineBasicMaterial({ color: 0xe9eef5, transparent: true, opacity: 0.45 })));
+  }
+  if (options.longitudes) {
+    // Unweighted longitudes projected into the world: circles through both charges (the 2D-world field).
+    for (const trace of longitudes) {
+      for (const piece of clip(trace.points.map(X => fromSphere(X, g)), half)) {
+        line(view.content, piece.map(p => rotate(p, angle)), longitudeColor, 0.45);
+      }
+    }
   }
   if (options.lines) {
     for (const trace of traces) {

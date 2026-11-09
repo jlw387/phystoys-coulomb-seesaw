@@ -56,6 +56,17 @@ h1, h2, h3 { font-family: "Space Grotesk", "Segoe UI", sans-serif; font-weight: 
 .mint { background: var(--mint); }
 .violet { background: var(--violet); }
 .white { background: #dfe8f3; }
+.grey { background: #a9b9cc; }
+.weight-control { left: 16px; right: 16px; bottom: 38px; display: flex; align-items: center; gap: 12px; max-width: 520px; padding: 9px 12px; background: #0f1721d9; border: 1px solid #2c3a4b; border-radius: 8px; }
+.play { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #518e78; background: #13251f; color: var(--mint); font-size: 12px; letter-spacing: -2px; }
+.weight-body { flex: 1; min-width: 0; }
+.weight-body label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #d4dfec; }
+.weight-body sup { font-size: 9px; color: var(--mint); }
+.weight-body input { width: 100%; margin: 6px 0 2px; }
+.weight-ends { display: flex; justify-content: space-between; font-size: 10px; color: #7f91a7; }
+.steps { padding-left: 18px; margin: 0 0 10px; }
+.steps li { font-size: 12px; line-height: 1.6; color: #a9b7c8; margin-bottom: 7px; }
+.steps strong { color: #d6e2f0; font-weight: 600; }
 .potential-key i { width: 40px; height: 4px; background: linear-gradient(90deg, #6daaff, #1d2c3e, #ff796a); border-radius: 3px; }
 .segmented { display: flex; padding: 2px; border: 1px solid #344153; border-radius: 6px; background: #0f1721cc; }
 .segmented button { padding: 4px 10px; border: none; background: none; color: #92a4bc; border-radius: 4px; font-size: 11px; }
@@ -114,4 +125,5 @@ dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; color: #d6e
   .tool.icon { font-size: 15px; }
   .drawer { left: 8px; width: auto; }
   .legend .hint { display: none; }
+  .weight-control { bottom: 62px; left: 10px; right: 10px; }
 }

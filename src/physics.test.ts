@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius, escapeFraction } from "./physics";
+import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius, escapeFraction, sphereLines, fromSphere } from "./physics";
 
 test("seesaw, full 3D potential, and analytic weighted gradient across the UI range", () => {
   for (const positive of [0.25, 1, 2, 4]) {
@@ -113,6 +113,32 @@ test("off-plane rule: any sphere and charges, q = R s / c_N, V = w * sum s/c", (
   const s1 = g.positive * distance(g.polePlus, N) / g.radius;
   const s2 = g.negative * distance(g.poleMinus, N) / g.radius;
   assert.ok(Math.abs(s1 - g.amplitude) < 1e-12 && Math.abs(s2 - g.amplitude) < 1e-12);
+});
+
+test("sphere-native tracing: weighted (t=1) projects onto real field lines; unweighted (t=0) gives circles", () => {
+  for (const [positive, negative] of [[1, 1], [2, 1], [1, 3]]) {
+    const g = geometry({ positive, negative, separation: 2 });
+    const weighted = sphereLines(g, 6, 1);
+    const real = fieldLines(g, 6, "coulomb");
+    assert.deepEqual(weighted.map(l => l.end), real.map(l => l.end), `${positive}:${negative} end types`);
+    for (const line of weighted) {
+      const projected = line.points.map(X => fromSphere(X, g)).filter(p => norm(p) < 20 * g.separation);
+      const f0 = flux(projected[0], g);
+      for (const p of projected) assert.ok(Math.abs(flux(p, g) - f0) < 1e-6, `${positive}:${negative} flux drift`);
+    }
+    const longitudes = sphereLines(g, 6, 0);
+    assert.ok(longitudes.every(l => l.end === "charge"), "longitudes run pole to pole; none escape");
+    for (const line of longitudes) {
+      // Circle through both charges and one sample point; every other projected point must lie on it.
+      const pts = line.points.map(X => fromSphere(X, g));
+      const m = pts[Math.floor(pts.length / 2)];
+      const [x1, x2] = [g.plus[0], g.minus[0]];
+      const cx = (x1 + x2) / 2;
+      const cy = ((m[0] - x1) * (m[0] - x2) + m[1] ** 2) / (2 * m[1]);
+      const r = Math.hypot(x1 - cx, cy);
+      for (const p of pts) assert.ok(Math.abs(Math.hypot(p[0] - cx, p[1] - cy) - r) < 1e-6 * Math.max(1, r));
+    }
+  }
 });
 
 test("invalid inputs and charge singularities are explicit errors", () => {
