@@ -245,23 +245,20 @@ export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, sets:
   plane.rotation.x = -Math.PI / 2;
   view.content.add(plane);
 
-  // Each set is traced on the sphere, then dropped onto the world plane by projection from N.
-  const drawSet = (set: SphereTrace[], styled: (trace: SphereTrace) => [number, number, number]) => {
+  // Curves are drawn on the sphere only; the physical view shows their projections.
+  const drawSet = (set: SphereTrace[], styled: (trace: SphereTrace) => [number, number]) => {
     for (const trace of set) {
-      const [color, sphereOpacity, planeOpacity] = styled(trace);
+      const [color, opacity] = styled(trace);
       const first = trace.points[0];
       const source = distance(first, g.polePlus) < distance(first, g.poleMinus) ? g.polePlus : g.poleMinus;
       const sink = source === g.polePlus ? g.poleMinus : g.polePlus;
       // Close each curve onto its poles (or N) so the sphere curves meet exactly at the lifted charges.
       const closing = trace.end === "charge" ? [sink] : trace.end === "escape" ? [NORTH] : [];
-      const full = [source, ...trace.points, ...closing];
-      line(view.content, full.map(extra), color, sphereOpacity);
-      const flat = full.filter(X => X !== NORTH).map(X => fromSphere(X, g));
-      for (const piece of clip(flat, half)) line(view.content, piece.map(onPlane), color, planeOpacity);
+      line(view.content, [source, ...trace.points, ...closing].map(extra), color, opacity);
     }
   };
-  if (options.longitudes) drawSet(sets.longitudes, () => [longitudeColor, 0.5, 0.22]);
-  if (options.lines) drawSet(sets.weighted, trace => [trace.end === "escape" ? escapeColor : colors.mint, 0.95, 0.35]);
+  if (options.longitudes) drawSet(sets.longitudes, () => [longitudeColor, 0.5]);
+  if (options.lines) drawSet(sets.weighted, trace => [trace.end === "escape" ? escapeColor : colors.mint, 0.95]);
 
   const A = extra(g.polePlus);
   const B = extra(g.poleMinus);

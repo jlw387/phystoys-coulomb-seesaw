@@ -52,8 +52,8 @@ The two views fill the window. Everything else lives in two drawers opened from 
   charges, and projection rays from N. Lines are traced **on the sphere** as steepest paths of
   $G_t = w^t F$ (§8). Grey reference curves are the unweighted longitudes of $F$ ($t=0$); the
   **Weight applied** slider and ▶ button bend them into the real lines ($t=1$). Charge-to-charge
-  lines are mint; lines reaching N (infinity) are violet. Every curve is also projected faintly onto
-  the world plane underneath. Only $t=0$ and $t=1$ are physical; intermediate values are an
+  lines are mint; lines reaching N (infinity) are violet. Curves are drawn on the sphere only; the
+  physical view shows their projections. Only $t=0$ and $t=1$ are physical; intermediate values are an
   illustrative interpolation. The **2D** toggle gives an orthographic side elevation.
 - **Physical view:** the actual 3D point-charge field in a rotatable axial cross-section, with an
   optional overlay of the projected longitudes (circles through both charges).
