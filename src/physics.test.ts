@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius, escapeFraction, sphereLines, fromSphere } from "./physics";
+import { geometry, lift, norm, distance, coulomb, projected, verification, flux, traceField, fieldLines, chargeRadius, escapeFraction, sphereLines, fromSphere, lineSeeds } from "./physics";
 
 test("seesaw, full 3D potential, and analytic weighted gradient across the UI range", () => {
   for (const positive of [0.25, 1, 2, 4]) {
@@ -137,6 +137,39 @@ test("sphere-native tracing: weighted (t=1) projects onto real field lines; unwe
       const cy = ((m[0] - x1) * (m[0] - x2) + m[1] ** 2) / (2 * m[1]);
       const r = Math.hypot(x1 - cx, cy);
       for (const p of pts) assert.ok(Math.abs(Math.hypot(p[0] - cx, p[1] - cy) - r) < 1e-6 * Math.max(1, r));
+    }
+  }
+});
+
+test("like charges: same fulcrum sphere, equal same-sign sphere charges, all lines escape", () => {
+  for (const [positive, negative] of [[1, 1], [2, 1], [1, 3], [4, 0.25]]) {
+    for (const separation of [0.5, 2, 6]) {
+      const g = geometry({ positive, negative, separation, sign2: 1 });
+      assert.ok(verification(g).passed, JSON.stringify({ positive, negative, separation, ...verification(g) }));
+    }
+  }
+  for (const [positive, negative] of [[1, 1], [2, 1], [1, 3]]) {
+    const g = geometry({ positive, negative, separation: 2, sign2: 1 });
+    // Both charges emit, in proportion to their size.
+    const count = 6;
+    const seeds = lineSeeds(g, count);
+    const fromPlus = seeds.filter(s => distance(s.point, g.plus) < distance(s.point, g.minus)).length;
+    assert.equal(fromPlus, 2 * Math.max(1, Math.round(count * positive / Math.max(positive, negative))));
+    assert.equal(seeds.length - fromPlus, 2 * Math.max(1, Math.round(count * negative / Math.max(positive, negative))));
+    const weighted = sphereLines(g, count, 1);
+    const real = fieldLines(g, count, "coulomb");
+    assert.ok(real.every(l => l.end === "escape"), `${positive}:${negative} real lines all escape`);
+    assert.deepEqual(weighted.map(l => l.end), real.map(l => l.end));
+    for (const line of weighted) {
+      const pts = line.points.map(X => fromSphere(X, g)).filter(p => norm(p) < 20 * g.separation);
+      const f0 = flux(pts[0], g);
+      for (const p of pts) assert.ok(Math.abs(flux(p, g) - f0) < 1e-6, `${positive}:${negative} flux drift`);
+    }
+    // Unweighted: steepest paths of F = 1/c1 + 1/c2 stall on the equator between the poles.
+    for (const line of sphereLines(g, count, 0)) {
+      assert.equal(line.end, "null");
+      const X = line.points[line.points.length - 1];
+      assert.ok(Math.abs(X.reduce((s, v, i) => s + v * g.polePlus[i], 0)) < 0.02, "ends on the equator");
     }
   }
 });

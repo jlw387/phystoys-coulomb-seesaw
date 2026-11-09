@@ -181,7 +181,7 @@ function charges(view: Viewport, g: Geometry, construction = false) {
   const scale = construction ? 0.55 : 1;
   for (const [q, p, color, sign] of [
     [g.positive, g.plus, colors.positive, "+"] as const,
-    [g.negative, g.minus, colors.negative, "-"] as const,
+    [g.negative, g.minus, secondColor(g), g.sign2 > 0 ? "+" : "-"] as const,
   ]) {
     sphere(view.content, p, scale * chargeRadius(q, g.separation), color);
     view.label(`${sign}${q.toFixed(2)}`, [p[0], -g.separation * 0.13, 0],
@@ -198,6 +198,7 @@ function charges(view: Viewport, g: Geometry, construction = false) {
 }
 
 const escapeColor = 0xb69cff;
+const secondColor = (g: Geometry) => g.sign2 > 0 ? colors.positive : colors.negative;
 const longitudeColor = 0xa9b9cc;
 
 function traceColor(trace: Trace) {
@@ -264,10 +265,10 @@ export function drawConstruction(view: Viewport, g: Geometry, probe: Vec3, sets:
   const B = extra(g.poleMinus);
   rod(view.content, A, B, g.separation * 0.006, 0xdfe8f3);
   sphere(view.content, A, 0.022 * g.separation, colors.positive);
-  sphere(view.content, B, 0.022 * g.separation, colors.negative);
+  sphere(view.content, B, 0.022 * g.separation, secondColor(g));
   if (options.rays) {
     line(view.content, [N, A, g.plus], colors.positive, 0.6, true);
-    line(view.content, [N, B, g.minus], colors.negative, 0.6, true);
+    line(view.content, [N, B, g.minus], secondColor(g), 0.6, true);
   }
   if (options.probe) {
     const X = toSphere(probe);

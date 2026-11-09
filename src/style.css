@@ -88,6 +88,7 @@ h1, h2, h3 { font-family: "Space Grotesk", "Segoe UI", sans-serif; font-weight: 
 .preset-row { display: flex; gap: 6px; align-items: center; margin-top: 10px; font-size: 11px; color: var(--muted); }
 .preset-row span { margin-right: auto; }
 .preset-row button { border: 1px solid #344153; border-radius: 4px; background: #17212d; padding: 3px 9px; font-size: 11px; }
+.sign-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--muted); }
 .hint-text { font-size: 11px !important; color: var(--muted) !important; }
 #input-error { color: #ff9a8f !important; margin: 6px 0 0; min-height: 0; }
 .range { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin: 12px 0 4px; }

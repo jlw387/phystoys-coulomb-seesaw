@@ -42,7 +42,7 @@ npm run preview
 The two views fill the window. Everything else lives in two drawers opened from the top bar
 (the charge summary chip also opens **Settings**); `Esc` closes them.
 
-- **Settings:** charge magnitudes (0.25 to 4) and separation (0.5 to 6), applied on change, plus
+- **Settings:** charge magnitudes (0.25 to 4), the second charge's sign, and separation (0.5 to 6), applied on change, plus
   presets. Also line density, tracing model, slice azimuth, probe position, and on/off switches
   for every layer: lifted lines and projection rays (construction); field lines, potential
   color, equipotential contours, and 3D context (physical). Coulomb's constant is 1.
@@ -69,7 +69,8 @@ The displayed sphere is the $S^2$ slice of $S^3$ lying over the world plane $z=0
 sufficient here because the charges sit on that plane. Vertical height is the extra
 coordinate. Charge **volume** scales with magnitude, but the sources remain ideal point charges.
 The physical view clips lines to its plotted square; leaving the square is not the same as
-escaping (balanced pairs have large loops that return). Only opposite-sign pairs are supported.
+escaping (balanced pairs have large loops that return). The second charge can be opposite or
+like-signed (Settings ? Charges); like pairs seed lines from both charges in proportion to size.
 
 ## Setup from the video
 
@@ -305,8 +306,32 @@ project onto circles through both charges and none escape. Separately checked: a
 ellipsoid can't fix the shape (vertical stretch has no effect; best in-plane stretch leaves 25% of
 the sphere's error) or the counting.
 
-## Related work
+### 9. Like charges: same sphere, one sign flipped
 
+For $+q_1$ and $+q_2$, the fulcrum, sphere, poles, $N$, and weight are all unchanged, because they depend
+only on the magnitudes. The two lifted charges are again equal ($+A$ each) and antipodal. The only
+change is $F = 1/c_1 + 1/c_2$.
+
+- **Same curves, different flow.** $F$ is still constant on rings about the $A$–$B$ axis, so the
+  longitudes are the same curves. Along a longitude, though, $F$ now falls from $+\infty$ at $A$ to a
+  minimum on the equator and rises again to $+\infty$ at $B$. Its steepest paths from both poles
+  therefore **stall on the equator**, and the unweighted picture is degenerate.
+- **The weight does all the work.** $G = wF$ sends every line to $N$, since all of the flux
+  $q_1+q_2$ must reach infinity. The real null point between the charges is where the equator gets
+  pinched.
+- **Tests.** Like pairs are verified across the input range. Sphere-traced lines project onto the real
+  lines with all of them escaping, and the unweighted paths end on the equator.
+
+**Alternative: Maxwell's external center.** Centering the sphere at Maxwell's external point
+(the same ratio $q_1^2:q_2^2$, dividing externally) also gives equal sphere charges. Here they are
+*mirror images* across $X_4=0$ rather than antipodal, and the identity again holds to $10^{-15}$.
+
+- For opposite charges, the mirror surface is the classical zero-potential sphere.
+- For equal like charges, the sphere's radius goes to infinity: it becomes the midplane, a
+  "sphere through infinity" and a true symmetry plane.
+- For unequal like charges, $w$ breaks the mirror symmetry, so that sphere has no special meaning.
+
+## Related work
 The mathematics is classical; the SÂ³ "seesaw" picture appears to be a new presentation of it.
 A literature search (Nov 2026) found no prior source that lifts an unequal pair to *antipodal* points of
 a hypersphere or treats the projection point as the sink for the net charge. Search tooling was

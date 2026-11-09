@@ -39,8 +39,8 @@ root.innerHTML = `
         </div>
         <div class="overlay bottom-left legend">
           <span><i class="dot grey"></i>Longitudes of F (unweighted)</span>
-          <span><i class="dot mint"></i>Lines of G, charge to charge</span>
-          <span><i class="dot violet"></i>Lines of G to N = &infin;</span>
+          <span><i class="dot mint"></i>Lines of G (stay finite)</span>
+          <span><i class="dot violet"></i>Lines of G reaching N = &infin;</span>
           <span class="hint" id="construction-hint">Drag to orbit &middot; scroll to zoom</span>
         </div>
       </div>
@@ -67,8 +67,11 @@ root.innerHTML = `
       <h3>Charges</h3>
       <div class="field-grid">
         <label class="positive" for="positive">+q&#8321;<input id="positive" type="number" min="0.25" max="4" step="0.25" value="2" required></label>
-        <label class="negative" for="negative">|&minus;q&#8322;|<input id="negative" type="number" min="0.25" max="4" step="0.25" value="1" required></label>
+        <label class="negative" for="negative" id="negative-label"><span id="negative-name">|&minus;q&#8322;|</span><input id="negative" type="number" min="0.25" max="4" step="0.25" value="1" required></label>
         <label for="separation">Separation L<input id="separation" type="number" min="0.5" max="6" step="0.25" value="2" required></label>
+      </div>
+      <div class="sign-row"><span>Second charge</span>
+        <div class="segmented" role="group" aria-label="Sign of the second charge"><button type="button" id="sign-opposite" aria-pressed="true">&minus; opposite</button><button type="button" id="sign-like" aria-pressed="false">+ like</button></div>
       </div>
       <div class="preset-row"><span>Presets</span><button type="button" data-preset="1,1">1 : 1</button><button type="button" data-preset="2,1">2 : 1</button><button type="button" data-preset="1,3">1 : 3</button></div>
       <p class="hint-text" id="input-error" role="status"></p>
@@ -142,7 +145,8 @@ root.innerHTML = `
     </ol>
     <p class="identity">V(p) = C &middot; w(X) &middot; F(X), &nbsp; C = 2&radic;(q&#8321;&#178;+q&#8322;&#178;)/L</p>
     <p>Why w: stereographic projection is an inversion through N, and w is Kelvin's inversion factor, the same factor as in the image-charge method. In 2D that factor is 1, which is why the flat longitudes alone work there for equal charges.</p>
-    <p>Why lines reach N: w = 0 at N, so N acts as a sink of strength F(N) &prop; q&#8321; &minus; q&#8322;. At 0% no curve can reach N; every longitude runs pole to pole.</p>
+    <p>Why lines reach N: w = 0 at N, so N acts as a sink of strength F(N) &prop; q&#8321; + q&#8322; (with signs). At 0% no curve can reach N.</p>
+    <p>Like charges use the same fulcrum, sphere, poles and weight; only the second sphere charge flips sign, so F = 1/c&#8321; + 1/c&#8322;. F then has a minimum on the equator between the poles, and the unweighted paths from both poles stall there. The weight is what sends every line up to N.</p>
     <p class="hint-text">Lines start at the stronger charge with equal flux each. Coulomb constant k = 1. Charge sphere volume &prop; |q|; the sources are ideal points. The displayed sphere is the 2-sphere slice of S&#179; over the z = 0 world plane.</p>
   </aside>`;
 
@@ -181,6 +185,7 @@ function start() {
     throw cause;
   }
   let g: Geometry = geometry({ positive: 2, negative: 1, separation: 2 });
+  let sign2: 1 | -1 = -1;
   let pending = 0;
   let pendingConstruction = 0;
   const caches = new Map<string, unknown>();
@@ -196,7 +201,7 @@ function start() {
     Number(input("probe-rho").value) * g.separation, 0];
   const count = () => Number(input("density").value);
   const weightT = () => Number(input("weight-t").value) / 100;
-  const systemKey = () => `${g.positive},${g.negative},${g.separation},${count()}`;
+  const systemKey = () => `${g.positive},${g.negative},${g.sign2},${g.separation},${count()}`;
 
   function traces(): Trace[] {
     const model = element<HTMLSelectElement>("model").value as FieldModel;
@@ -260,10 +265,18 @@ function start() {
     try {
       g = geometry({
         positive: Number(input("positive").value), negative: Number(input("negative").value),
-        separation: Number(input("separation").value),
+        separation: Number(input("separation").value), sign2,
       });
+      const like = sign2 > 0;
       text("summary-positive", `+${g.positive}`);
-      text("summary-negative", `\u2212${g.negative}`);
+      text("summary-negative", `${like ? "+" : "\u2212"}${g.negative}`);
+      for (const id of ["summary-negative", "negative-label"]) {
+        element(id).classList.toggle("positive", like);
+        element(id).classList.toggle("negative", !like);
+      }
+      element("negative-name").innerHTML = like ? "+q&#8322;" : "|&minus;q&#8322;|";
+      element("sign-opposite").setAttribute("aria-pressed", String(!like));
+      element("sign-like").setAttribute("aria-pressed", String(like));
       text("summary-separation", `L ${g.separation}`);
       text("origin", fmt(g.origin));
       text("radius", fmt(g.radius));
@@ -292,6 +305,8 @@ function start() {
   const form = element<HTMLFormElement>("parameters");
   form.addEventListener("submit", event => { event.preventDefault(); updateSystem(); });
   for (const id of ["positive", "negative", "separation"]) input(id).addEventListener("change", () => updateSystem());
+  element("sign-opposite").addEventListener("click", () => { sign2 = -1; updateSystem(); });
+  element("sign-like").addEventListener("click", () => { sign2 = 1; updateSystem(); });
   for (const id of ["angle", "density", "probe-x", "probe-rho", "model", "context", "potential",
     "equipotentials", "lines", "sphere-lines", "rays", "probe", "sphere-longitudes", "physical-longitudes"]) {
     element(id).addEventListener("input", scheduleDraw);
@@ -375,6 +390,7 @@ function start() {
 
   element("reset").addEventListener("click", () => {
     stopAnimation();
+    sign2 = -1;
     for (const [id, value] of Object.entries(defaults)) {
       const field = element<HTMLInputElement | HTMLSelectElement>(id);
       if (typeof value === "boolean") (field as HTMLInputElement).checked = value;
